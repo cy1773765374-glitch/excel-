@@ -7,7 +7,10 @@
 - **嵌入单元格图片 / 单元格图片类型**：openpyxl 可能拿不全，自动切换 **Excel COM** 导出（更稳）
 
 > 适配 Xbot 可视化流程「调用模块」方式，也可作为独立 Python 模块调用。
-
+> FAQ:常见问题汇总
+> allow_cell_fallback.py:相对于export.py额外增加了对Excel行没有图片情况的处理
+> export.py：项目主要脚本文件
+> requirements.txt:项目所需依赖文件
 ---
 
 ## 功能概览
