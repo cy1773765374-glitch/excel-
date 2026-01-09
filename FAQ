@@ -1,0 +1,105 @@
+# 常见问题排查（FAQ）
+
+本文件汇总了在使用 `export_images_by_row` 导出 Excel 图片时最常见的问题、原因与解决方案，适合直接放到 GitHub 项目的 `docs/FAQ.md` 或 README 的 FAQ 章节。
+
+---
+
+## Q1：只导出了少量图片（只导出 openpyxl 识别到的那几张）
+
+### 现象
+日志里能看到 openpyxl 导出了一些图片，但 Excel 里明明还有更多图片没导出。
+
+### 原因
+图片属于 **“嵌入单元格图片 / 单元格图片类型”**，`openpyxl` 经常拿不全或拿不到。
+
+### 解决方案
+- **强制使用 Excel COM：**
+  - `engine="com"`
+- 或使用 **自动补齐模式：**
+  - `engine="auto"`（推荐）  
+  `auto` 会先用 openpyxl 导出一部分，再用 COM 补齐剩余行。
+
+---
+
+## Q2：日志显示 `openpyxl 检测到图片对象数量: 0`
+
+### 现象
+日志类似：
+- `openpyxl 检测到图片对象数量: 0`
+
+### 原因（常见两类）
+1. 当前工作表图片不是传统 **drawing/shape** 图片对象（openpyxl 看不到）
+2. 文件不是 `.xlsx/.xlsm`（例如 `.xls`），openpyxl 本身不支持从 `.xls` 读取图片对象
+
+### 解决方案
+- **先用 Excel/WPS 另存为 `.xlsx`**（不要用 pandas 转存，pandas 会丢图片）
+- 然后选择：
+  - `engine="com"`（最稳）
+  - 或 `engine="auto"`（推荐）
+
+---
+
+## Q3：有些图片明明在 A 列，却匹配不到（或匹配错行）
+
+### 现象
+你肉眼看到图片在 A 列的某行，但程序导出不到，或导出到了别行。
+
+### 原因
+Excel 图片有“锚点”（`TopLeftCell`）机制：  
+图片视觉上在 A 列，但它的锚点可能落在：
+- 相邻列：B/C 列（非常常见）
+- 上一行：图片高度/位置导致锚点不在你以为的行
+
+### 解决方案
+- **把列容差调大：**
+  - `colTolerance=5`（建议首次排查用）
+- **开启调试日志：**
+  - `debug=1`
+- 观察日志中的实际 `row/col`，再把 `colTolerance` 逐步调小到合适范围（更精准）
+
+---
+
+## Q4：某些只有文字的行，会不会被导出成“文字截图”？
+
+### 现象
+某些行没有图片，但导出了一个 PNG，内容是单元格里的文字/边框/样式。
+
+### 原因
+这取决于 **Excel COM 分支的 fallback 逻辑**：
+
+- 当 `engine="auto"` 或 `engine="com"` 时  
+- 如果某行没有识别到 shape 图片  
+- COM 可能会尝试对该行的 `imgCol` 单元格执行 `CopyPicture` 并导出  
+  → 这会把单元格“可视内容”截图导出（包括文字）
+
+### 解决方案
+- 如果你只想导出“真正含图片的行”：
+  - **关闭 COM fallback**（需要小改代码）
+  -修改方案如下
+    参考allow_cell_fallback
+    这是一份带 allow_cell_fallback 参数的完整源码（默认 0：只导出真正的图片；设为 1：允许在 COM 分支里对没有 shape 的行做“单元格截图导出”）。
+    ✅ 你现在的诉求：不希望纯文字行被导出成图片
+    所以建议默认：allow_cell_fallback=0
+  - 或提交 Issue/PR 让仓库默认支持 `allow_cell_fallback=0/1` 参数切换
+
+> 建议：如果你的 Excel 图片主要是嵌入单元格类型，而某些行 A 列又可能出现纯文字，最好关闭 fallback，避免导出“文字截图”。
+
+---
+
+## Q5：COM 导出失败 / 提示缺少 `pywin32`
+
+### 现象
+日志提示：
+- 缺少 pywin32
+- 或 COM 初始化失败
+
+### 原因
+Excel COM 分支依赖：
+- Windows 系统
+- 本机安装 Microsoft Excel
+- Python 安装 `pywin32`
+
+### 解决方案
+1. 安装依赖：
+   ```bash
+   pip install pywin32
