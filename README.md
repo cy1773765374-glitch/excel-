@@ -10,6 +10,7 @@
 > FAQ:常见问题汇总。
 > allow_cell_fallback.py:相对于export.py额外增加了对Excel行没有图片情况的处理，具体介绍请参考FAQ中的Q4。
 > export.py：项目主要脚本文件。
+> export1.py:实现了对A列图片命字合并单元格情况下的处理，即B列有多张同样名字的图片。主要用在影刀RPA中实现对此类从excel中导出图片系列问题的处理，只需调用其中的export_images_by_row函数。
 > requirements.txt:项目所需依赖文件。
 ---
 
